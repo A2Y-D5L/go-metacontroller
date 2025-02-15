@@ -37,8 +37,8 @@ import (
 type Parent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              map[string]interface{} `json:"spec,omitempty"`
-	Status            map[string]interface{} `json:"status,omitempty"`
+	Spec              map[string]any `json:"spec,omitempty"`
+	Status            map[string]any `json:"status,omitempty"`
 }
 
 // DeepCopyObject implements the runtime.Object interface.
