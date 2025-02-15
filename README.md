@@ -22,88 +22,90 @@ The following demonstrates how to create a `HookServer`, register `sync` and `cu
 package main
 
 import (
-	"context"
-	"log"
-	"net/http"
-	"time"
+    "context"
+    "log"
+    "net/http"
+    "time"
 
-	"github.com/a2y-d5l/go-metacontroller"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+    "github.com/a2y-d5l/go-metacontroller"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/apimachinery/pkg/runtime"
+    "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // Parent represents a custom parent resource.
 type Parent struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              map[string]any `json:"spec,omitempty"`
-	Status            map[string]any `json:"status,omitempty"`
+    metav1.TypeMeta   `json:",inline"`
+    metav1.ObjectMeta `json:"metadata,omitempty"`
+    Spec              map[string]any `json:"spec,omitempty"`
+    Status            map[string]any `json:"status,omitempty"`
 }
 
 // DeepCopyObject implements the runtime.Object interface.
 func (p *Parent) DeepCopyObject() runtime.Object {
-	// Deep copy implementation (omitted for brevity)
-	return p
+    // Deep copy implementation (omitted for brevity)
+    return p
 }
 
 // Sync processes sync hook requests.
 func Sync(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CompositeRequest[*Parent]) (*metacontroller.CompositeResponse[*Parent], error) {
-	// Implement your sync logic here.
-	// For example, update the status and desired child resources.
-	resp := &metacontroller.CompositeResponse[*MyParent]{
-		Status: req.Parent,
-		Children: map[schema.GroupVersionKind][]runtime.Object{
-			{Group: "apps", Version: "v1", Kind: "Deployment"}: {},
-		},
-	}
-	return resp, nil
+    // Implement your sync logic here.
+    // For example, update the status and desired child resources.
+    resp := &metacontroller.CompositeResponse[*MyParent]{
+        Status: req.Parent,
+        Children: map[schema.GroupVersionKind][]runtime.Object{
+            {Group: "apps", Version: "v1", Kind: "Deployment"}: {},
+        },
+    }
+
+    return resp, nil
 }
 
 // Customize processes customize hook requests.
 func Customize(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CustomizeRequest[*Parent]) (*metacontroller.CustomizeResponse, error) {
-	// Define related resources based on the parent resource.
-	resp := &metacontroller.CustomizeResponse{
-		RelatedResources: []metacontroller.ResourceRule{
-			{
-				APIVersion: "apps/v1",
-				Resource:   "deployments",
-			},
-		},
-	}
-	return resp, nil
+    // Define related resources based on the parent resource.
+    resp := &metacontroller.CustomizeResponse{
+        RelatedResources: []metacontroller.ResourceRule{
+            {
+                APIVersion: "apps/v1",
+                Resource:   "deployments",
+            },
+        },
+    }
+
+    return resp, nil
 }
 
 func main() {
-	// Create a new Kubernetes runtime scheme and register your types.
-	scheme := runtime.NewScheme()
-	// (Register Parent and any other types with the scheme as needed)
+    // Create a new Kubernetes runtime scheme and register your types.
+    scheme := runtime.NewScheme()
+    // (Register Parent and any other types with the scheme as needed)
 
-	// Create a new HookServer with sync and customize hooks.
-	hs := metacontroller.NewHookServer(":8080", scheme,
-		metacontroller.SyncHook("/sync/parents", Sync),
-		metacontroller.CustomizeHook("/customize/parents", Customize),
-		metacontroller.Debug(), // Enable debug mode for detailed errors.
-	)
+    // Create a new HookServer with sync and customize hooks.
+    hs := metacontroller.NewHookServer(":8080", scheme,
+     metacontroller.SyncHook("/sync/parents", Sync),
+     metacontroller.CustomizeHook("/customize/parents", Customize),
+     metacontroller.Debug(), // Enable debug mode for detailed errors.
+    )
 
-	// Start the server in a separate goroutine.
-	go func() {
-		log.Printf("HookServer starting on %s", hs.Addr)
-		if err := hs.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("HookServer error: %v", err)
-		}
-	}()
+    // Start the server in a separate goroutine.
+    go func() {
+        log.Printf("HookServer starting on %s", hs.Addr)
+        if err := hs.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            log.Fatalf("HookServer error: %v", err)
+        }
+    }()
 
-	// Simulate running server for a duration.
-	time.Sleep(10 * time.Second)
+    // Simulate running server for a duration.
+    time.Sleep(10 * time.Second)
 
-	// Gracefully shut down the server.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := hs.Shutdown(ctx); err != nil {
-		log.Fatalf("Error shutting down HookServer: %v", err)
-	}
-	log.Println("HookServer graceful shutdown complete.")
+    // Gracefully shut down the server.
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    if err := hs.Shutdown(ctx); err != nil {
+        log.Fatalf("Error shutting down HookServer: %v", err)
+    }
+    log.Println("HookServer graceful shutdown complete.")
 }
 ```
 
@@ -157,7 +159,7 @@ Configure the `HookServer`.
 - `SyncHook(path string, handler SyncHandler[TParent])`: Register a `sync` hook handler to handle requests at the specified HTTP path.
 - `CustomizeHook(path string, handler CustomizeHandler[TParent])`: Register a `customize` hook handler to handle requests at the specified HTTP path.
 
-### Helper Functions:
+### Helper Functions
 
 - `KeyForGVK(gvk schema.GroupVersionKind) string`: Constructs a string key for a given GroupVersionKind in the format group/version/kind (or version/kind if the group is empty).
 
