@@ -113,20 +113,20 @@ func main() {
 
 ### Sync Handler
 
-Type: `SyncHandler[TParent runtime.Object]`
+**Type:** `SyncHandler[TParent runtime.Object]`
 
 Processes sync hook requests to update the parent resource status and define desired child objects.
 
-Parameters:
+**Parameters:**
 
-- ctx: The request context.
-- scheme: The Kubernetes runtime scheme for encoding/decoding.
-- req: A `CompositeRequest` containing:
+- `ctx`: The request context.
+- `scheme`: The Kubernetes runtime scheme for encoding/decoding.
+- `req`: A `CompositeRequest` containing:
   - Parent: The composite (parent) resource.
   - Children: A map grouping child objects by their `GroupVersionKind`.
   - Operation: The operation type (e.g., `sync` or `finalize`).
 
-Returns: A `CompositeResponse` with the updated parent status, desired child resources.
+**Returns:** A `CompositeResponse` with the updated parent status, desired child resources.
 
 ### Customize Handler
 
