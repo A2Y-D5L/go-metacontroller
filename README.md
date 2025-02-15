@@ -1,12 +1,11 @@
 # go-metacontroller
 
-go-metacontroller is a framework for building Metacontroller webhook servers in Go.
+A framework for building Metacontroller webhook servers in Go.
 
 ## Features
 
 - **Flexible Hook Registration:** Easily register multiple sync and customize hooks for different parent resource types.
 - **Customizable Logging:** Use the default logger or provide your own implementation.
-- **Debug Mode:** Enable detailed error responses to aid development and troubleshooting.
 - **Kubernetes API Integration:** Seamlessly decode and encode Kubernetes API objects using a provided runtime scheme.
 
 ## Installation
@@ -38,8 +37,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// MyParent represents a custom parent resource.
-type MyParent struct {
+// Parent represents a custom parent resource.
+type Parent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              map[string]interface{} `json:"spec,omitempty"`
@@ -47,27 +46,26 @@ type MyParent struct {
 }
 
 // DeepCopyObject implements the runtime.Object interface.
-func (m *MyParent) DeepCopyObject() runtime.Object {
+func (p *Parent) DeepCopyObject() runtime.Object {
 	// Deep copy implementation (omitted for brevity)
-	return m
+	return p
 }
 
-// MySyncHandler processes sync hook requests.
-func MySyncHandler(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.DecodedCompositeRequest[*MyParent]) (*metacontroller.DecodedCompositeResponse[*MyParent], error) {
+// SyncHandler processes sync hook requests.
+func SyncHandler(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CompositeRequest[*Parent]) (*metacontroller.CompositeResponse[*Parent], error) {
 	// Implement your sync logic here.
 	// For example, update the status and desired child resources.
-	resp := &metacontroller.DecodedCompositeResponse[*MyParent]{
+	resp := &metacontroller.CompositeResponse[*MyParent]{
 		Status: req.Parent,
 		Children: map[schema.GroupVersionKind][]runtime.Object{
 			{Group: "apps", Version: "v1", Kind: "Deployment"}: {},
 		},
-		Patches: nil, // Optional JSON patches can be provided here.
 	}
 	return resp, nil
 }
 
-// MyCustomizeHandler processes customize hook requests.
-func MyCustomizeHandler(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CustomizeRequest[*MyParent]) (*metacontroller.CustomizeResponse, error) {
+// CustomizeHandler processes customize hook requests.
+func CustomizeHandler(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CustomizeRequest[*Parent]) (*metacontroller.CustomizeResponse, error) {
 	// Define related resources based on the parent resource.
 	resp := &metacontroller.CustomizeResponse{
 		RelatedResources: []metacontroller.ResourceRule{
@@ -83,13 +81,13 @@ func MyCustomizeHandler(ctx context.Context, scheme *runtime.Scheme, req *metaco
 func main() {
 	// Create a new Kubernetes runtime scheme and register your types.
 	scheme := runtime.NewScheme()
-	// (Register MyParent and any other types with the scheme as needed)
+	// (Register Parent and any other types with the scheme as needed)
 
 	// Create a new HookServer with sync and customize hooks.
 	hs := metacontroller.NewHookServer(":8080", scheme,
-		metacontroller.WithSyncHook("/sync", MySyncHandler),
-		metacontroller.WithCustomizeHook("/customize", MyCustomizeHandler),
-		metacontroller.WithDebug(true), // Enable debug mode for detailed errors.
+		metacontroller.SyncHook("/sync/parents", SyncHandler),
+		metacontroller.CustomizeHook("/customize/parents", CustomizeHandler),
+		metacontroller.Debug(true), // Enable debug mode for detailed errors.
 	)
 
 	// Start the server in a separate goroutine.
@@ -107,9 +105,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := hs.Shutdown(ctx); err != nil {
-		log.Fatalf("Error shutting down server: %v", err)
+		log.Fatalf("Error shutting down HookServer: %v", err)
 	}
-	log.Println("HookServer gracefully stopped")
+	log.Println("HookServer graceful shutdown complete.")
 }
 ```
 
