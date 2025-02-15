@@ -1,4 +1,4 @@
-package customize
+package composite
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 // Request represents the customize hook request. It contains the full CompositeController object (as raw JSON) and the parent object.
-type Request[P client.Object] struct {
+type CustomizeRequest[P client.Object] struct {
 	// Controller is the full CompositeController object as received.
 	Controller json.RawMessage `json:"controller"`
 	// Parent is the parent resource.
@@ -32,10 +32,10 @@ type ResourceRule struct {
 }
 
 // CustomizeResponse represents the response from the customize hook.
-type Response struct {
+type CustomizeResponse struct {
 	// RelatedResources is a flat list of ResourceRule objects.
 	RelatedResources []ResourceRule `json:"relatedResources"`
 }
 
-// Handler is a function type for processing customize hook requests. It receives a context, the runtime scheme, and a decoded customize request, then returns a customize response or an error.
-type Handler[P client.Object] func(context.Context, *runtime.Scheme, *Request[P]) (*Response, error)
+// CustomizeHandler is a function type for processing customize hook requests. It receives a context, the runtime scheme, and a decoded customize request, then returns a customize response or an error.
+type CustomizeHandler[P client.Object] func(context.Context, *runtime.Scheme, *CustomizeRequest[P]) (*CustomizeResponse, error)
