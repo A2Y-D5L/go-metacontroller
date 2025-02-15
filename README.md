@@ -16,9 +16,7 @@ go get github.com/A2Y-D5L/go-metacontroller
 
 ## Usage
 
-### Creating a Hook Server
-
-The following example demonstrates how to create a `HookServer`, register `sync` and `customize` hooks, and start the server.
+The following demonstrates how to create a `HookServer`, register `sync` and `customize` hooks, and start the server.
 
 ```go
 package main
@@ -122,9 +120,9 @@ Processes sync hook requests to update the parent resource status and define des
 - `ctx`: The request context.
 - `scheme`: The Kubernetes runtime scheme for encoding/decoding.
 - `req`: A `CompositeRequest` containing:
-  - Parent: The composite (parent) resource.
-  - Children: A map grouping child objects by their `GroupVersionKind`.
-  - Operation: The operation type (e.g., `sync` or `finalize`).
+  - `Parent`: The composite (parent) resource.
+  - `Children`: A map grouping child objects by their `GroupVersionKind`.
+  - `Operation`: The operation type (e.g., `sync` or `finalize`).
 
 **Returns:** A `CompositeResponse` with the updated parent status, desired child resources.
 
@@ -139,8 +137,8 @@ Processes customize hook requests to define related resources for the parent res
 - `ctx`: The request context.
 - `scheme`: The Kubernetes runtime scheme.
 - `req`: A CustomizeRequest containing:
-  - Controller: The raw JSON of the full CompositeController object.
-  - Parent: The parent resource.
+  - `Controller`: The raw JSON of the full CompositeController object.
+  - `Parent`: The parent resource.
 
 **Returns:** A `CustomizeResponse` that includes a list of ResourceRule objects specifying related resources.
 
