@@ -1,6 +1,6 @@
 # go-metacontroller
 
-A framework for building Metacontroller webhook servers in Go.
+A framework for building [Metacontroller](https://metacontroller.github.io/metacontroller/) webhook servers in Go.
 
 ## Features
 
@@ -173,4 +173,4 @@ This project is licensed under the [Apache 2.0 License](./LICENSE).
 
 ## Acknowledgements
 
-This library builds on the amazing work done by the Metacontroller authors and leverages Kubernetes API machinery (from k8s.io/apimachinery) for robust encoding and decoding of runtime objects. Many thanks to the Kubernetes community for their invaluable contributions.
+This library builds on the amazing work done by the [Metacontroller authors](https://github.com/metacontroller/metacontroller/graphs/contributors) and leverages Kubernetes API machinery (from k8s.io/apimachinery) for robust encoding and decoding of runtime objects. Many thanks to the Kubernetes community for their invaluable contributions.
