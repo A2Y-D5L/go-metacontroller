@@ -55,20 +55,6 @@ func writeError(w http.ResponseWriter, code int, err error, logger Logger, debug
 	http.Error(w, msg, code)
 }
 
-// checkMethod verifies that the request uses the expected HTTP method. If not, it writes an error response and returns false.
-func checkMethod(w http.ResponseWriter, r *http.Request, expectedMethod string, logger Logger, debug bool) bool {
-	if r.Method != expectedMethod {
-		writeError(w, http.StatusMethodNotAllowed, fmt.Errorf("expected %s method, got %s", expectedMethod, r.Method), logger, debug)
-		return false
-	}
-	return true
-}
-
-// decodeJSON decodes JSON from the HTTP request body into the given output.
-func decodeJSON(r *http.Request, out interface{}) error {
-	return json.NewDecoder(r.Body).Decode(out)
-}
-
 // --- Internal types for the sync hook ---
 
 // rawCompositeRequest mirrors the JSON payload for the sync hook.
@@ -173,6 +159,7 @@ func NewHookServer(addr string, scheme *runtime.Scheme, opts ...Option) *HookSer
 	for _, opt := range opts {
 		opt(hs)
 	}
+
 	return hs
 }
 
@@ -197,6 +184,7 @@ func (hs *HookServer) ListenAndServe() error {
 		Handler: hs.mux,
 	}
 	hs.logger.Printf("Starting HookServer at %s", hs.addr)
+
 	return hs.server.ListenAndServe()
 }
 
@@ -206,6 +194,7 @@ func (hs *HookServer) Shutdown(ctx context.Context) error {
 		hs.logger.Printf("Shutting down HookServer at %s", hs.addr)
 		return hs.server.Shutdown(ctx)
 	}
+
 	return nil
 }
 
@@ -255,12 +244,8 @@ type syncHTTPHandler[TParent runtime.Object] struct {
 
 // ServeHTTP processes sync hook HTTP requests.
 func (sh *syncHTTPHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !checkMethod(w, r, http.MethodPost, sh.logger, sh.debug) {
-		return
-	}
-
 	var rawReq rawCompositeRequest
-	if err := decodeJSON(r, &rawReq); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&rawReq); err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("SyncHook: error decoding request: %w", err), sh.logger, sh.debug)
 		return
 	}
@@ -270,6 +255,7 @@ func (sh *syncHTTPHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusBadRequest, fmt.Errorf("SyncHook: error decoding parent: %w", err), sh.logger, sh.debug)
 		return
 	}
+
 	parent, ok := parentObj.(TParent)
 	if !ok {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("SyncHook: type assertion failure for parent"), sh.logger, sh.debug)
@@ -344,12 +330,8 @@ type customizeHTTPHandler[TParent runtime.Object] struct {
 
 // ServeHTTP processes customize hook HTTP requests.
 func (ch *customizeHTTPHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !checkMethod(w, r, http.MethodPost, ch.logger, ch.debug) {
-		return
-	}
-
-	var rawReq 
-	if err := decodeJSON(r, &rawReq); err != nil {
+	var rawReq rawCustomizeRequest
+	if err := json.NewDecoder(r.Body).Decode(&rawReq); err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("CustomizeHook: error decoding request: %w", err), ch.logger, ch.debug)
 		return
 	}
@@ -359,11 +341,13 @@ func (ch *customizeHTTPHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusBadRequest, fmt.Errorf("CustomizeHook: error decoding parent: %w", err), ch.logger, ch.debug)
 		return
 	}
+
 	parent, ok := parentObj.(TParent)
 	if !ok {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("CustomizeHook: type assertion failure for parent"), ch.logger, ch.debug)
 		return
 	}
+
 	customReq := &CustomizeRequest[TParent]{
 		Controller: rawReq.Controller,
 		Parent:     parent,
@@ -373,6 +357,7 @@ func (ch *customizeHTTPHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *htt
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("CustomizeHook: handler error: %w", err), ch.logger, ch.debug)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		ch.logger.Printf("CustomizeHook: error encoding response: %v", err)
