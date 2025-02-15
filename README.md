@@ -47,8 +47,8 @@ func (p *Parent) DeepCopyObject() runtime.Object {
 	return p
 }
 
-// SyncHandler processes sync hook requests.
-func SyncHandler(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CompositeRequest[*Parent]) (*metacontroller.CompositeResponse[*Parent], error) {
+// Sync processes sync hook requests.
+func Sync(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CompositeRequest[*Parent]) (*metacontroller.CompositeResponse[*Parent], error) {
 	// Implement your sync logic here.
 	// For example, update the status and desired child resources.
 	resp := &metacontroller.CompositeResponse[*MyParent]{
@@ -60,8 +60,8 @@ func SyncHandler(ctx context.Context, scheme *runtime.Scheme, req *metacontrolle
 	return resp, nil
 }
 
-// CustomizeHandler processes customize hook requests.
-func CustomizeHandler(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CustomizeRequest[*Parent]) (*metacontroller.CustomizeResponse, error) {
+// Customize processes customize hook requests.
+func Customize(ctx context.Context, scheme *runtime.Scheme, req *metacontroller.CustomizeRequest[*Parent]) (*metacontroller.CustomizeResponse, error) {
 	// Define related resources based on the parent resource.
 	resp := &metacontroller.CustomizeResponse{
 		RelatedResources: []metacontroller.ResourceRule{
