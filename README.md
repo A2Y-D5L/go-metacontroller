@@ -11,7 +11,7 @@ A framework for building [Metacontroller](https://metacontroller.github.io/metac
 ## Installation
 
 ```bash
-go get github.com/A2Y-D5L/go-metacontroller
+go get github.com/a2y-d5l/go-metacontroller
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/A2Y-D5L/go-metacontroller"
+	"github.com/a2y-d5l/go-metacontroller"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
