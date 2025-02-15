@@ -156,10 +156,10 @@ The core server that handles HTTP requests for registered hooks. It uses an inte
 
 Configure the `HookServer`.
 
-- `WithLogger(Logger)`: Set a custom logger.
-- `WithDebug(bool)`: Enable or disable debug mode.
-- `WithSyncHook(path string, handler SyncHandler[TParent])`: Register a sync hook handler at the specified HTTP path.
-- `WithCustomizeHook(path string, handler CustomizeHandler[TParent])`: Register a customize hook handler at the specified HTTP path.
+- `Logger(Logger)`: Set a custom logger.
+- `Debug(bool)`: Enable or disable debug mode.
+- `SyncHook(path string, handler SyncHandler[TParent])`: Register a `sync` hook handler to handle requests at the specified HTTP path.
+- `CustomizeHook(path string, handler CustomizeHandler[TParent])`: Register a `customize` hook handler to handle requests at the specified HTTP path.
 
 ### Helper Functions:
 
