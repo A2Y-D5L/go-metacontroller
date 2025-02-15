@@ -34,8 +34,7 @@ func (d *defaultLogger) Printf(format string, v ...interface{}) {
 	log.Printf(format, v...)
 }
 
-// writeError logs an error and writes an HTTP error response.
-// If debug is true, the detailed error message is exposed in the response.
+// writeError logs an error and writes an HTTP error response. If debug is true, the detailed error message is exposed in the response.
 func writeError(w http.ResponseWriter, code int, err error, logger Logger, debug bool) {
 	logger.Printf("Error: %v", err)
 	var msg string
@@ -56,8 +55,7 @@ func writeError(w http.ResponseWriter, code int, err error, logger Logger, debug
 	http.Error(w, msg, code)
 }
 
-// checkMethod verifies that the request uses the expected HTTP method.
-// If not, it writes an error response and returns false.
+// checkMethod verifies that the request uses the expected HTTP method. If not, it writes an error response and returns false.
 func checkMethod(w http.ResponseWriter, r *http.Request, expectedMethod string, logger Logger, debug bool) bool {
 	if r.Method != expectedMethod {
 		writeError(w, http.StatusMethodNotAllowed, fmt.Errorf("expected %s method, got %s", expectedMethod, r.Method), logger, debug)
@@ -75,47 +73,47 @@ func decodeJSON(r *http.Request, out interface{}) error {
 
 // rawCompositeRequest mirrors the JSON payload for the sync hook.
 type rawCompositeRequest struct {
-	Parent    json.RawMessage              `json:"parent"`
-	Children  map[string][]json.RawMessage `json:"children"`
-	Operation string                       `json:"operation"`
+	Parent		json.RawMessage              `json:"parent"`
+	Children	map[string][]json.RawMessage `json:"children"`
+	Finalizing	bool                         `json:"finalizing"`
 }
 
 // rawCompositeResponse is used to encode the sync hook response.
 type rawCompositeResponse struct {
 	Status   json.RawMessage              `json:"status,omitempty"`
 	Children map[string][]json.RawMessage `json:"children,omitempty"`
-	Patches  []map[string]interface{}     `json:"patches,omitempty"`
 }
 
-// DecodedCompositeRequest represents the fully decoded sync hook request.
-type DecodedCompositeRequest[TParent runtime.Object] struct {
+// CompositeRequest represents the fully decoded sync hook request.
+type CompositeRequest[TParent runtime.Object] struct {
 	// Parent is the composite (parent) resource.
 	Parent TParent
 	// Children is a map from GroupVersionKind to slices of decoded child objects.
 	Children map[schema.GroupVersionKind][]runtime.Object
-	// Operation indicates the type of operation (e.g., "sync" or "finalize").
-	Operation string
+	// Finalizing indicates the type of sync operation (sync=false, finalize=true).
+	Finalizing bool
 }
 
-// DecodedCompositeResponse represents the sync hook response.
-type DecodedCompositeResponse[TParent runtime.Object] struct {
+// CompositeResponse represents the sync hook response.
+type CompositeResponse[TParent runtime.Object] struct {
 	// Status is the updated composite (parent) resource.
 	Status TParent
 	// Children defines the desired state for child objects.
 	Children map[schema.GroupVersionKind][]runtime.Object
-	// Patches can be used to apply JSON patches to the composite resource.
-	Patches []map[string]interface{}
 }
 
-// SyncHandler is a function type for processing decoded sync hook requests.
-// It receives a context, the runtime scheme, and a decoded composite request,
-// then returns a decoded composite response or an error.
-type SyncHandler[TParent runtime.Object] func(ctx context.Context, scheme *runtime.Scheme, req *DecodedCompositeRequest[TParent]) (*DecodedCompositeResponse[TParent], error)
+// SyncHandler is a function type for processing decoded sync hook requests. It receives a context, the runtime scheme, and a decoded composite request, then returns a decoded composite response or an error.
+type SyncHandler[TParent runtime.Object] func(ctx context.Context, scheme *runtime.Scheme, req *CompositeRequest[TParent]) (*CompositeResponse[TParent], error)
 
 // --- Types for the customize hook ---
 
-// CustomizeRequest represents the customize hook request.
-// It contains the full CompositeController object (as raw JSON) and the parent object.
+// rawCustomizeRequest mirrors the JSON payload for the customize hook.
+type rawCustomizeRequest struct {
+	Controller json.RawMessage `json:"controller"`
+	Parent     json.RawMessage `json:"parent"`
+}
+
+// CustomizeRequest represents the customize hook request. It contains the full CompositeController object (as raw JSON) and the parent object.
 type CustomizeRequest[TParent runtime.Object] struct {
 	// Controller is the full CompositeController object as received.
 	Controller json.RawMessage `json:"controller"`
@@ -143,15 +141,12 @@ type CustomizeResponse struct {
 	RelatedResources []ResourceRule `json:"relatedResources"`
 }
 
-// CustomizeHandler is a function type for processing customize hook requests.
-// It receives a context, the runtime scheme, and a decoded customize request,
-// then returns a customize response or an error.
+// CustomizeHandler is a function type for processing customize hook requests. It receives a context, the runtime scheme, and a decoded customize request, then returns a customize response or an error.
 type CustomizeHandler[TParent runtime.Object] func(ctx context.Context, scheme *runtime.Scheme, req *CustomizeRequest[TParent]) (*CustomizeResponse, error)
 
 // --- HookServer and Functional Options ---
 
-// HookServer is a non‑generic server that can host multiple CompositeController hooks.
-// Consumers register sync and/or customize handlers via functional options.
+// HookServer is an HTTP server that hosts one or more Metacontroller hook servers.
 type HookServer struct {
 	addr   string
 	scheme *runtime.Scheme
@@ -181,18 +176,17 @@ func NewHookServer(addr string, scheme *runtime.Scheme, opts ...Option) *HookSer
 	return hs
 }
 
-// WithLogger creates an option that sets a custom logger for the HookServer.
-func WithLogger(logger Logger) Option {
+// Logger creates an option that sets a custom logger for the HookServer.
+func Logger(logger Logger) Option {
 	return func(hs *HookServer) {
 		hs.logger = logger
 	}
 }
 
-// WithDebug creates an option that sets the debug flag for the HookServer.
-// When debug is true, error responses will include detailed error messages.
-func WithDebug(debug bool) Option {
+// Debug sets the debug flag to true for the HookServer. When debug is true, error responses will include detailed error messages.
+func Debug() Option {
 	return func(hs *HookServer) {
-		hs.debug = debug
+		hs.debug = true
 	}
 }
 
@@ -215,8 +209,8 @@ func (hs *HookServer) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// WithSyncHook creates an option that registers a sync hook handler at the given path.
-func WithSyncHook[TParent runtime.Object](path string, handler SyncHandler[TParent]) Option {
+// SyncHook registers a sync hook handler at the given path.
+func SyncHook[TParent runtime.Object](path string, handler SyncHandler[TParent]) Option {
 	return func(hs *HookServer) {
 		decoder := hs.scheme.Codecs.UniversalDecoder()
 		encoder := k8sjson.NewSerializerWithOptions(k8sjson.DefaultMetaFactory, hs.scheme, hs.scheme, k8sjson.SerializerOptions{Yaml: false})
@@ -233,11 +227,11 @@ func WithSyncHook[TParent runtime.Object](path string, handler SyncHandler[TPare
 	}
 }
 
-// WithCustomizeHook creates an option that registers a customize hook handler at the given path.
-func WithCustomizeHook[TParent runtime.Object](path string, handler CustomizeHandler[TParent]) Option {
+// CustomizeHook registers a customize hook handler at the given path.
+func CustomizeHook[TParent runtime.Object](path string, handler CustomizeHandler[TParent]) Option {
 	return func(hs *HookServer) {
 		decoder := hs.scheme.Codecs.UniversalDecoder()
-		ch := &customizeHookHandler[TParent]{
+		ch := &customizeHTTPHandler[TParent]{
 			scheme:  hs.scheme,
 			decoder: decoder,
 			handler: handler,
@@ -249,21 +243,8 @@ func WithCustomizeHook[TParent runtime.Object](path string, handler CustomizeHan
 	}
 }
 
-// --- Helper: KeyForGVK ---
-
-// KeyForGVK constructs a string key for a given GroupVersionKind in the form "group/version/kind".
-// If the group is empty, the key is "version/kind".
-func KeyForGVK(gvk schema.GroupVersionKind) string {
-	if gvk.Group == "" {
-		return fmt.Sprintf("%s/%s", gvk.Version, gvk.Kind)
-	}
-	return fmt.Sprintf("%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind)
-}
-
-// --- syncHookHandler implementation ---
-
-// syncHookHandler handles sync hook HTTP requests.
-type syncHookHandler[TParent runtime.Object] struct {
+// syncHTTPHandler handles sync hook HTTP requests.
+type syncHTTPHandler[TParent runtime.Object] struct {
 	scheme  *runtime.Scheme
 	decoder runtime.Decoder
 	encoder runtime.Encoder
@@ -273,7 +254,7 @@ type syncHookHandler[TParent runtime.Object] struct {
 }
 
 // ServeHTTP processes sync hook HTTP requests.
-func (sh *syncHookHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (sh *syncHTTPHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !checkMethod(w, r, http.MethodPost, sh.logger, sh.debug) {
 		return
 	}
@@ -284,7 +265,6 @@ func (sh *syncHookHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Decode parent.
 	parentObj, _, err := sh.decoder.Decode(rawReq.Parent, nil, nil)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("SyncHook: error decoding parent: %w", err), sh.logger, sh.debug)
@@ -296,8 +276,7 @@ func (sh *syncHookHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Decode children and group by GVK.
-	childrenMap := make(map[schema.GroupVersionKind][]runtime.Object)
+	observedChildren := make(map[schema.GroupVersionKind][]runtime.Object)
 	for _, rawList := range rawReq.Children {
 		for _, rawChild := range rawList {
 			childObj, childGVK, err := sh.decoder.Decode(rawChild, nil, nil)
@@ -306,31 +285,29 @@ func (sh *syncHookHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Req
 				return
 			}
 			gvk := *childGVK
-			childrenMap[gvk] = append(childrenMap[gvk], childObj)
+			observedChildren[gvk] = append(observedChildren[gvk], childObj)
 		}
 	}
 
-	decodedReq := &DecodedCompositeRequest[TParent]{
+	req := &CompositeRequest[TParent]{
 		Parent:    parent,
-		Children:  childrenMap,
+		Children:  observedChildren,
 		Operation: rawReq.Operation,
 	}
 
-	decodedResp, err := sh.handler(r.Context(), sh.scheme, decodedReq)
+	decodedResp, err := sh.handler(r.Context(), sh.scheme, req)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("SyncHook: handler error: %w", err), sh.logger, sh.debug)
 		return
 	}
 
-	// Encode updated parent.
 	statusBytes, err := runtime.Encode(sh.encoder, decodedResp.Status)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("SyncHook: error encoding status: %w", err), sh.logger, sh.debug)
 		return
 	}
 
-	// Encode children.
-	encodedChildren := make(map[string][]json.RawMessage)
+	desiredChildren := make(map[string][]json.RawMessage)
 	for gvk, objs := range decodedResp.Children {
 		key := KeyForGVK(gvk)
 		var rawList []json.RawMessage
@@ -342,12 +319,12 @@ func (sh *syncHookHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Req
 			}
 			rawList = append(rawList, json.RawMessage(data))
 		}
-		encodedChildren[key] = rawList
+		desiredChildren[key] = rawList
 	}
 
 	rawResp := rawCompositeResponse{
 		Status:   statusBytes,
-		Children: encodedChildren,
+		Children: desiredChildren,
 		Patches:  decodedResp.Patches,
 	}
 
@@ -357,10 +334,7 @@ func (sh *syncHookHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 }
 
-// --- customizeHookHandler implementation ---
-
-// customizeHookHandler handles customize hook HTTP requests.
-type customizeHookHandler[TParent runtime.Object] struct {
+type customizeHTTPHandler[TParent runtime.Object] struct {
 	scheme  *runtime.Scheme
 	decoder runtime.Decoder
 	handler CustomizeHandler[TParent]
@@ -369,19 +343,17 @@ type customizeHookHandler[TParent runtime.Object] struct {
 }
 
 // ServeHTTP processes customize hook HTTP requests.
-func (ch *customizeHookHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (ch *customizeHTTPHandler[TParent]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !checkMethod(w, r, http.MethodPost, ch.logger, ch.debug) {
 		return
 	}
-	var rawReq struct {
-		Controller json.RawMessage `json:"controller"`
-		Parent     json.RawMessage `json:"parent"`
-	}
+
+	var rawReq 
 	if err := decodeJSON(r, &rawReq); err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("CustomizeHook: error decoding request: %w", err), ch.logger, ch.debug)
 		return
 	}
-	// Decode parent.
+
 	parentObj, _, err := ch.decoder.Decode(rawReq.Parent, nil, nil)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("CustomizeHook: error decoding parent: %w", err), ch.logger, ch.debug)
