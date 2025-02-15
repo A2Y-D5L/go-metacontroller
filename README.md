@@ -10,8 +10,6 @@ A framework for building Metacontroller webhook servers in Go.
 
 ## Installation
 
-Install the library using `go get`:
-
 ```bash
 go get github.com/A2Y-D5L/go-metacontroller
 ```
