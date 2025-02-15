@@ -81,8 +81,8 @@ func main() {
 
 	// Create a new HookServer with sync and customize hooks.
 	hs := metacontroller.NewHookServer(":8080", scheme,
-		metacontroller.SyncHook("/sync/parents", SyncHandler),
-		metacontroller.CustomizeHook("/customize/parents", CustomizeHandler),
+		metacontroller.SyncHook("/sync/parents", Sync),
+		metacontroller.CustomizeHook("/customize/parents", Customize),
 		metacontroller.Debug(), // Enable debug mode for detailed errors.
 	)
 
