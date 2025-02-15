@@ -87,7 +87,7 @@ func main() {
 	hs := metacontroller.NewHookServer(":8080", scheme,
 		metacontroller.SyncHook("/sync/parents", SyncHandler),
 		metacontroller.CustomizeHook("/customize/parents", CustomizeHandler),
-		metacontroller.Debug(true), // Enable debug mode for detailed errors.
+		metacontroller.Debug(), // Enable debug mode for detailed errors.
 	)
 
 	// Start the server in a separate goroutine.
@@ -157,7 +157,7 @@ The core server that handles HTTP requests for registered hooks. It uses an inte
 Configure the `HookServer`.
 
 - `Logger(Logger)`: Set a custom logger.
-- `Debug(bool)`: Enable or disable debug mode.
+- `Debug()`: Enables debug mode.
 - `SyncHook(path string, handler SyncHandler[TParent])`: Register a `sync` hook handler to handle requests at the specified HTTP path.
 - `CustomizeHook(path string, handler CustomizeHandler[TParent])`: Register a `customize` hook handler to handle requests at the specified HTTP path.
 
