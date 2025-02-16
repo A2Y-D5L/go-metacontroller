@@ -13,6 +13,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/a2y-d5l/go-metacontroller/composite"
@@ -22,6 +23,7 @@ import (
 type HookServer struct {
 	addr   string
 	scheme *runtime.Scheme
+	codecs serializer.CodecFactory
 	mux    *http.ServeMux
 	server *http.Server
 	logger *slog.Logger
@@ -38,6 +40,7 @@ func NewHookServer(scheme *runtime.Scheme, opts ...Option) *HookServer {
 		mux:    http.NewServeMux(),
 		logger: slog.Default(),
 	}
+	hs.codecs = serializer.NewCodecFactory(scheme)
 	for _, opt := range opts {
 		opt(hs)
 	}
@@ -79,8 +82,8 @@ func SyncHook[P client.Object](gvr schema.GroupVersionResource, handler composit
 		path := "/hooks/sync/" + resource
 		hs.mux.Handle("POST "+path, &syncHandler[P]{
 			scheme:  hs.scheme,
-			decoder: hs.scheme.Codecs.UniversalDecoder(),
-			encoder: hs.scheme.Codecs.LegacyCodec(),
+			decoder: hs.codecs.UniversalDecoder(),
+			encoder: hs.codecs.LegacyCodec(gvr.GroupVersion()),
 			handler: handler,
 			logger:  hs.logger,
 			debug:   hs.debug,
@@ -95,8 +98,8 @@ func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, handler comp
 		path := "/hooks/finalize/" + resource
 		hs.mux.Handle("POST "+path, &syncHandler[P]{
 			scheme:  hs.scheme,
-			decoder: hs.scheme.Codecs.UniversalDecoder(),
-			encoder: hs.scheme.Codecs.LegacyCodec(),
+			decoder: hs.codecs.UniversalDecoder(),
+			encoder: hs.codecs.LegacyCodec(gvr.GroupVersion()),
 			handler: handler,
 			logger:  hs.logger,
 		})
@@ -110,7 +113,7 @@ func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, handler com
 		path := "/hooks/customize/" + resource
 		hs.mux.Handle("POST "+path, &customizeHTTPHandler[P]{
 			scheme:  hs.scheme,
-			decoder: hs.scheme.Codecs.UniversalDecoder(),
+			decoder: hs.codecs.UniversalDecoder(),
 			handler: handler,
 			logger:  hs.logger,
 			debug:   hs.debug,

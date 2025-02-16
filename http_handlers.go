@@ -194,12 +194,12 @@ func (ch *customizeHTTPHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		Parent:     parent,
 	})
 	if err != nil {
-		writeError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("CustomizeHook: handler error: %w", err), ch.logger)
+		writeError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("CustomizeHook: CustomizeHandler failed with error: %w", err), ch.logger)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		ch.logger.Error("CustomizeHook: error encoding response: " + err.Error())
+		ch.logger.Error("CustomizeHook: error encoding response" , "error" ,err.Error())
 	}
 }
