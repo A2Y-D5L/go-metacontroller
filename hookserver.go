@@ -11,11 +11,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/a2y-d5l/go-metacontroller/controller/composite"
-	"github.com/a2y-d5l/go-metacontroller/controller/customize"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/a2y-d5l/go-metacontroller/composite"
 )
 
 // HookServer is an HTTP server that hosts one or more Metacontroller hook servers.
@@ -104,7 +104,7 @@ func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, handler comp
 	})
 }
 
-func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, handler customize.Handler[P]) CompositeHook {
+func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, handler composite.CustomizeHandler[P]) CompositeHook {
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/customize/" + resource

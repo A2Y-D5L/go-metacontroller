@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/a2y-d5l/go-metacontroller/controller/composite"
-	"github.com/a2y-d5l/go-metacontroller/controller/customize"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/a2y-d5l/go-metacontroller/composite"
 )
 
 type (
@@ -85,7 +85,7 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	parent, ok := p.(P)
 	if !ok {
-		writeError(r.Context(), w, http.StatusBadRequest, fmt.Errorf("SyncHook: type assertion failure for parent"), sh.logger)
+		writeError(r.Context(), w, http.StatusBadRequest, fmt.Errorf("SyncHook: type assertion failure: parent"), sh.logger)
 
 		return
 	}
@@ -95,14 +95,20 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for _, rawChild := range rawList {
 			childObj, childGVK, err := sh.decoder.Decode(rawChild, nil, nil)
 			if err != nil {
-				sh.logger.ErrorContext(r.Context(), "SyncHook: error decoding child: "+err.Error(), slog.String("child", string(rawChild)))
+				sh.logger.ErrorContext(r.Context(),
+					"SyncHook: error decoding child",
+					"error", err.Error(),
+					"child", string(rawChild))
 
 				continue
 			}
 
 			child, ok := childObj.(client.Object)
 			if !ok {
-				sh.logger.ErrorContext(r.Context(), "SyncHook: type assertion failure for child", slog.String("child", string(rawChild)))
+				sh.logger.ErrorContext(r.Context(),
+					"SyncHook: type assertion failure: child is not a client.Object",
+					"child",
+					string(rawChild))
 
 				continue
 			}
@@ -158,7 +164,7 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type customizeHTTPHandler[P client.Object] struct {
 	scheme  *runtime.Scheme
 	decoder runtime.Decoder
-	handler customize.Handler[P]
+	handler composite.CustomizeHandler[P]
 	logger  *slog.Logger
 	debug   bool
 }
@@ -183,7 +189,7 @@ func (ch *customizeHTTPHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp, err := ch.handler(r.Context(), ch.scheme, &customize.Request[P]{
+	resp, err := ch.handler(r.Context(), ch.scheme, &composite.CustomizeRequest[P]{
 		Controller: rawReq.Controller,
 		Parent:     parent,
 	})
