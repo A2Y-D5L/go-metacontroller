@@ -1,0 +1,11 @@
+# Default ignore all:
+./* 
+
+# Exceptions:
+! .gitignore
+! go.mod
+! go.sum
+! LICENSE
+! Makefile
+! README.md
+! */*.go
