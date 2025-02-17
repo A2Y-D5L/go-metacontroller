@@ -15,8 +15,6 @@ type SyncRequest[P client.Object] struct {
 	Parent P
 	// Children is a map from GroupVersionKind to slices of decoded child objects.
 	Children map[schema.GroupVersionKind][]client.Object
-	// Finalizing indicates the type of sync operation (sync=false, finalize=true).
-	Finalizing bool
 }
 
 // SyncResponse represents the sync hook response.
@@ -24,8 +22,7 @@ type SyncResponse[P client.Object] struct {
 	// Status is the updated composite (parent) resource.
 	Status P
 	// Children defines the desired state for child objects.
-	Children map[schema.GroupVersionKind][]client.Object
-	// Finalized indicates whether the parent resource should be marked as finalized.
+	Children []client.Object
 }
 
 // Syncer is an interface for processing sync hook requests.
