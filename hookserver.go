@@ -27,7 +27,6 @@ type HookServer struct {
 	mux    *http.ServeMux
 	server *http.Server
 	logger *slog.Logger
-	debug  bool
 }
 
 // NewHookServer creates a new HookServer that will listen on the provided address
@@ -125,7 +124,7 @@ func (hs *HookServer) ListenAndServe() error {
 		Addr:    hs.addr,
 		Handler: hs.mux,
 	}
-	hs.logger.Info("Starting HookServer at %s", hs.addr)
+	hs.logger.Info("Starting HookServer at " + hs.addr)
 
 	return hs.server.ListenAndServe()
 }
@@ -133,7 +132,7 @@ func (hs *HookServer) ListenAndServe() error {
 // Shutdown gracefully shuts down the HTTP server using the provided context.
 func (hs *HookServer) Shutdown(ctx context.Context) error {
 	if hs.server != nil {
-		hs.logger.Info("Shutting down HookServer at %s", hs.addr)
+		hs.logger.Info("Shutting down HookServer at " + hs.addr)
 		return hs.server.Shutdown(ctx)
 	}
 
