@@ -24,9 +24,9 @@ type (
 
 	// rawCompositeResponse is used to encode the sync hook response.
 	rawCompositeResponse struct {
-		Status    json.RawMessage              `json:"status,omitempty"`
-		Children  map[string][]json.RawMessage `json:"children,omitempty"`
-		Finalized bool                         `json:"finalized,omitempty"`
+		Status    json.RawMessage   `json:"status,omitempty"`
+		Children  []json.RawMessage `json:"children,omitempty"`
+		Finalized bool              `json:"finalized,omitempty"`
 	}
 
 	// rawCustomizeRequest mirrors the JSON payload for the customize hook.
@@ -60,8 +60,8 @@ func writeError(ctx context.Context, w http.ResponseWriter, code int, err error,
 // syncHandler handles sync hook HTTP requests.
 type syncHandler[P client.Object] struct {
 	scheme  *runtime.Scheme
-	decoder runtime.Decoder
 	encoder runtime.Encoder
+	decoder runtime.Decoder
 	syncer  composition.Syncer[P]
 	logger  *slog.Logger
 }
@@ -116,9 +116,8 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := sh.syncer.Sync(r.Context(), sh.scheme, &composition.SyncRequest[P]{
-		Parent:     parent,
-		Children:   observedChildren,
-		Finalizing: rawReq.Finalizing,
+		Parent:   parent,
+		Children: observedChildren,
 	})
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("SyncHook: handler error: %w", err), sh.logger)
@@ -133,21 +132,16 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	desiredChildren := make(map[string][]json.RawMessage)
-	for gvk, objs := range resp.Children {
-		key := KeyForGVK(gvk)
-		var rawList []json.RawMessage
-		for _, obj := range objs {
-			data, err := runtime.Encode(sh.encoder, obj)
-			if err != nil {
-				writeError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("SyncHook: error encoding child: %w", err), sh.logger)
+	desiredChildren := make([]json.RawMessage, len(resp.Children))
+	for i, child := range resp.Children {
+		encodedChild, err := runtime.Encode(sh.encoder, child)
+		if err != nil {
+			writeError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("SyncHook: error encoding child: %w", err), sh.logger)
 
-				return
-			}
-
-			rawList = append(rawList, json.RawMessage(data))
+			return
 		}
-		desiredChildren[key] = rawList
+
+		desiredChildren[i] = json.RawMessage(encodedChild)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -203,6 +197,7 @@ func (ch *customizeHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 type finalizeHandler[P client.Object] struct {
 	scheme    *runtime.Scheme
+	encoder   runtime.Encoder
 	decoder   runtime.Decoder
 	finalizer composition.Finalizer[P]
 	logger    *slog.Logger
@@ -264,8 +259,18 @@ func (fh *finalizeHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	statusBytes, err := runtime.Encode(fh.encoder, resp.Status)
+	if err != nil {
+		writeError(r.Context(), w, http.StatusInternalServerError, fmt.Errorf("finalize failed: error encoding parent status: %w", err), fh.logger)
+
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
+	if err := json.NewEncoder(w).Encode(rawCompositeResponse{
+		Status:    statusBytes,
+		Finalized: resp.Finalized,
+	}); err != nil {
 		fh.logger.Error("Finalize error: unable to encode response", "error", err.Error())
 	}
 }
