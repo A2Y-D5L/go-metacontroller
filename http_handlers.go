@@ -17,9 +17,9 @@ import (
 type (
 	// rawCompositeRequest mirrors the JSON payload for the sync hook.
 	rawCompositeRequest struct {
-		Parent     json.RawMessage              `json:"parent"`
-		Children   map[string][]json.RawMessage `json:"children"`
-		Finalizing bool                         `json:"finalizing"`
+		Parent     json.RawMessage                       `json:"parent"`
+		Children   map[string]map[string]json.RawMessage `json:"children,omitempty"`
+		Finalizing bool                                  `json:"finalizing"`
 	}
 
 	// rawCompositeResponse is used to encode the sync hook response.
