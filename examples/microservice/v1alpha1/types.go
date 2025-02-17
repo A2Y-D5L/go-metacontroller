@@ -3,7 +3,13 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	// GroupVersion is group version used to register these objects
+	GroupVersion = schema.GroupVersion{Group: "example.com", Version: "v1alpha1"}
 )
 
 // MicroserviceSpec defines the desired state of Microservice.
@@ -52,6 +58,17 @@ type Microservice struct {
 	Spec   MicroserviceSpec   `json:"spec,omitempty"`
 	Status MicroserviceStatus `json:"status,omitempty"`
 }
+
+const (
+	MicroserviceKind         = "Microservice"
+	MicroserviceResourceName = "microservices"
+)
+
+var (
+	MicroserviceGroupVersionKind     = GroupVersion.WithKind(MicroserviceKind)
+	MicroserviceGroupVersionResource = GroupVersion.WithResource("microservices")
+	MicroserviceKindAPIVersion       = MicroserviceKind + "." + GroupVersion.String()
+)
 
 // Ensure Microservice implements client.Object.
 var _ client.Object = &Microservice{}

@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -86,15 +85,11 @@ func sync(ctx context.Context, scheme *runtime.Scheme, req *composition.SyncRequ
 		},
 	}
 
-	// Return the composite response. In this example, we do not update the parent status.
+	// Return the result of the sync operation.
+	// In this example, we do not update the parent status.
 	return &composition.SyncResponse[*v1alpha1.Microservice]{
-		Status: req.Parent,
-		Children: map[schema.GroupVersionKind][]client.Object{
-			// Add Deployment.
-			appsv1.SchemeGroupVersion.WithKind("Deployment"): {deployment},
-			// Add Service.
-			corev1.SchemeGroupVersion.WithKind("Service"): {service},
-		},
+		Status:   req.Parent,
+		Children: []client.Object{deployment, service},
 	}, nil
 }
 
@@ -102,7 +97,7 @@ func main() {
 	// Create a new runtime scheme.
 	scheme := runtime.NewScheme()
 
-	// Register Kubernetes API types.
+	// Register API types for the Microservice children.
 	if err := appsv1.AddToScheme(scheme); err != nil {
 		log.Fatalf("Failed to add appsv1 to scheme: %v", err)
 	}
@@ -110,22 +105,18 @@ func main() {
 		log.Fatalf("Failed to add corev1 to scheme: %v", err)
 	}
 
-	// Define the GroupVersionResource for the Microservice CR.
-	gvr := schema.GroupVersionResource{
-		Group:    "example.com",
-		Version:  "v1alpha1",
-		Resource: "microservices",
-	}
-
-	// Create the HookServer with our sync hook registered.
-	hookServer := metacontroller.NewHookServer(scheme,
+	// Create a HookServer with our sync hook registered.
+	hs := metacontroller.NewHookServer(scheme,
 		metacontroller.CompositeController(
-			metacontroller.SyncHook[*v1alpha1.Microservice](gvr, composition.SyncerFunc[*v1alpha1.Microservice](sync)),
+			metacontroller.SyncHook[*v1alpha1.Microservice](
+				v1alpha1.MicroserviceGroupVersionResource,
+				composition.SyncerFunc[*v1alpha1.Microservice](sync),
+			),
 		),
 	)
 
 	// Start the HookServer.
-	if err := hookServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := hs.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("HookServer error: %v", err)
 	}
 }
