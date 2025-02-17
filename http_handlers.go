@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/a2y-d5l/go-metacontroller/composite"
+	"github.com/a2y-d5l/go-metacontroller/composition"
 )
 
 type (
@@ -62,7 +62,7 @@ type syncHandler[P client.Object] struct {
 	scheme  *runtime.Scheme
 	decoder runtime.Decoder
 	encoder runtime.Encoder
-	syncer  composite.Syncer[P]
+	syncer  composition.Syncer[P]
 	logger  *slog.Logger
 }
 
@@ -115,7 +115,7 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	resp, err := sh.syncer.Sync(r.Context(), sh.scheme, &composite.SyncRequest[P]{
+	resp, err := sh.syncer.Sync(r.Context(), sh.scheme, &composition.SyncRequest[P]{
 		Parent:     parent,
 		Children:   observedChildren,
 		Finalizing: rawReq.Finalizing,
@@ -162,7 +162,7 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type customizeHandler[P client.Object] struct {
 	scheme     *runtime.Scheme
 	decoder    runtime.Decoder
-	customizer composite.Customizer[P]
+	customizer composition.Customizer[P]
 	logger     *slog.Logger
 }
 
@@ -186,7 +186,7 @@ func (ch *customizeHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp, err := ch.customizer.Customize(r.Context(), ch.scheme, &composite.CustomizeRequest[P]{
+	resp, err := ch.customizer.Customize(r.Context(), ch.scheme, &composition.CustomizeRequest[P]{
 		Controller: rawReq.Controller,
 		Parent:     parent,
 	})
@@ -204,7 +204,7 @@ func (ch *customizeHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request)
 type finalizeHandler[P client.Object] struct {
 	scheme    *runtime.Scheme
 	decoder   runtime.Decoder
-	finalizer composite.Finalizer[P]
+	finalizer composition.Finalizer[P]
 	logger    *slog.Logger
 }
 
@@ -254,7 +254,7 @@ func (fh *finalizeHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	resp, err := fh.finalizer.Finalize(r.Context(), fh.scheme, &composite.FinalizeRequest[P]{
+	resp, err := fh.finalizer.Finalize(r.Context(), fh.scheme, &composition.FinalizeRequest[P]{
 		Parent: parent,
 	})
 	if err != nil {

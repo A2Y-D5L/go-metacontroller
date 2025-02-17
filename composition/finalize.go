@@ -1,4 +1,4 @@
-package composite
+package composition
 
 import (
 	"context"

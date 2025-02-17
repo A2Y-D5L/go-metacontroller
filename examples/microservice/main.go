@@ -16,12 +16,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/a2y-d5l/go-metacontroller"
-	"github.com/a2y-d5l/go-metacontroller/composite"
+	"github.com/a2y-d5l/go-metacontroller/composition"
 	"github.com/a2y-d5l/go-metacontroller/examples/microservice/v1alpha1"
 )
 
 // sync reads a Microservice spec to create a Deployment and a Service.
-func sync(ctx context.Context, scheme *runtime.Scheme, req *composite.SyncRequest[*v1alpha1.Microservice]) (*composite.SyncResponse[*v1alpha1.Microservice], error) {
+func sync(ctx context.Context, scheme *runtime.Scheme, req *composition.SyncRequest[*v1alpha1.Microservice]) (*composition.SyncResponse[*v1alpha1.Microservice], error) {
 	name := req.Parent.GetName()
 	namespace := req.Parent.GetNamespace()
 	if namespace == "" {
@@ -87,7 +87,7 @@ func sync(ctx context.Context, scheme *runtime.Scheme, req *composite.SyncReques
 	}
 
 	// Return the composite response. In this example, we do not update the parent status.
-	return &composite.SyncResponse[*v1alpha1.Microservice]{
+	return &composition.SyncResponse[*v1alpha1.Microservice]{
 		Status: req.Parent,
 		Children: map[schema.GroupVersionKind][]client.Object{
 			// Add Deployment.
@@ -120,7 +120,7 @@ func main() {
 	// Create the HookServer with our sync hook registered.
 	hookServer := metacontroller.NewHookServer(scheme,
 		metacontroller.CompositeController(
-			metacontroller.SyncHook[*v1alpha1.Microservice](gvr, composite.SyncerFunc[*v1alpha1.Microservice](sync)),
+			metacontroller.SyncHook[*v1alpha1.Microservice](gvr, composition.SyncerFunc[*v1alpha1.Microservice](sync)),
 		),
 	)
 

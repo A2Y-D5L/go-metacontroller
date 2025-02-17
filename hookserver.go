@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/a2y-d5l/go-metacontroller/composite"
+	"github.com/a2y-d5l/go-metacontroller/composition"
 )
 
 // HookServer is an HTTP server that hosts one or more Metacontroller hook servers.
@@ -76,7 +76,7 @@ func CompositeController(hooks ...CompositeHook) Option {
 	}
 }
 
-func SyncHook[P client.Object](gvr schema.GroupVersionResource, syncer composite.Syncer[P]) CompositeHook {
+func SyncHook[P client.Object](gvr schema.GroupVersionResource, syncer composition.Syncer[P]) CompositeHook {
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/sync/" + resource
@@ -91,7 +91,7 @@ func SyncHook[P client.Object](gvr schema.GroupVersionResource, syncer composite
 	})
 }
 
-func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, finalizer composite.Finalizer[P]) CompositeHook {
+func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, finalizer composition.Finalizer[P]) CompositeHook {
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/finalize/" + resource
@@ -105,7 +105,7 @@ func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, finalizer co
 	})
 }
 
-func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, customizer composite.Customizer[P]) CompositeHook {
+func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, customizer composition.Customizer[P]) CompositeHook {
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/customize/" + resource
