@@ -3,8 +3,8 @@ package composite
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	api "k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -19,15 +19,35 @@ type SyncRequest[P client.Object] struct {
 	Finalizing bool
 }
 
-// CompositeResponse represents the sync hook response.
-type CompositeResponse[TParent client.Object] struct {
+// SyncResponse represents the sync hook response.
+type SyncResponse[P client.Object] struct {
 	// Status is the updated composite (parent) resource.
-	Status TParent
+	Status P
 	// Children defines the desired state for child objects.
 	Children map[schema.GroupVersionKind][]client.Object
 	// Finalized indicates whether the parent resource should be marked as finalized.
-	Finalized bool
 }
 
-// SyncHandler is a function type for processing decoded sync hook requests. It receives a context, the runtime scheme, and a decoded composite request, then returns a decoded composite response or an error.
-type SyncHandler[TParent client.Object] func(ctx context.Context, scheme *api.Scheme, req *SyncRequest[TParent]) (*CompositeResponse[TParent], error)
+// Syncer is an interface for processing sync hook requests.
+type Syncer[P client.Object] interface {
+	// Sync is a function that processes sync requests.
+	// It receives a context, the runtime scheme, and a decoded sync request,
+	// then returns a sync response or an error.
+	Sync(
+		ctx context.Context,
+		scheme *api.Scheme,
+		req *SyncRequest[P],
+	) (*SyncResponse[P], error)
+}
+
+// SyncerFunc is a functional implementation of the Syncer interface.
+type SyncerFunc[P client.Object] func(
+	ctx context.Context,
+	scheme *api.Scheme,
+	req *SyncRequest[P],
+) (*SyncResponse[P], error)
+
+// Sync implements the Syncer interface.
+func (fn SyncerFunc[P]) Sync(ctx context.Context, scheme *api.Scheme, req *SyncRequest[P]) (*SyncResponse[P], error) {
+	return fn(ctx, scheme, req)
+}

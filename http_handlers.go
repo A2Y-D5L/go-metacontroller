@@ -62,9 +62,8 @@ type syncHandler[P client.Object] struct {
 	scheme  *runtime.Scheme
 	decoder runtime.Decoder
 	encoder runtime.Encoder
-	handler composite.SyncHandler[P]
+	syncer composite.Syncer[P]
 	logger  *slog.Logger
-	debug   bool
 }
 
 // ServeHTTP processes sync hook HTTP requests.
@@ -116,7 +115,7 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	resp, err := sh.handler(r.Context(), sh.scheme, &composite.SyncRequest[P]{
+	resp, err := sh.syncer.Sync(r.Context(), sh.scheme, &composite.SyncRequest[P]{
 		Parent:     parent,
 		Children:   observedChildren,
 		Finalizing: rawReq.Finalizing,
@@ -155,7 +154,6 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(rawCompositeResponse{
 		Status:    statusBytes,
 		Children:  desiredChildren,
-		Finalized: resp.Finalized,
 	}); err != nil {
 		sh.logger.ErrorContext(r.Context(), "SyncHook: error encoding response: "+err.Error())
 	}
@@ -164,9 +162,8 @@ func (sh *syncHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type customizeHTTPHandler[P client.Object] struct {
 	scheme  *runtime.Scheme
 	decoder runtime.Decoder
-	handler composite.CustomizeHandler[P]
+	customizer composite.Customizer[P]
 	logger  *slog.Logger
-	debug   bool
 }
 
 // ServeHTTP processes customize hook HTTP requests.
@@ -189,7 +186,7 @@ func (ch *customizeHTTPHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp, err := ch.handler(r.Context(), ch.scheme, &composite.CustomizeRequest[P]{
+	resp, err := ch.customizer.Customize(r.Context(), ch.scheme, &composite.CustomizeRequest[P]{
 		Controller: rawReq.Controller,
 		Parent:     parent,
 	})
@@ -202,4 +199,12 @@ func (ch *customizeHTTPHandler[P]) ServeHTTP(w http.ResponseWriter, r *http.Requ
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		ch.logger.Error("CustomizeHook: error encoding response" , "error" ,err.Error())
 	}
+}
+
+
+type finalizeHTTPHandler[P client.Object] struct {
+	scheme  *runtime.Scheme
+	decoder runtime.Decoder
+	finalizer composite.Finalizer[P]
+	logger  *slog.Logger
 }

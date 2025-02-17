@@ -3,8 +3,8 @@ package composite
 import (
 	"context"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	api "k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -27,5 +27,26 @@ type FinalizeResponse[TParent client.Object] struct {
 	Finalized bool
 }
 
-// FinalizeHandler is a function type for processing finalize requests.
-type FinalizeHandler[P client.Object] func(ctx context.Context, scheme *api.Scheme, req *FinalizeRequest[P]) (*FinalizeResponse[P], error)
+// Finalizer is an interface for processing finalize requests.
+type Finalizer[P client.Object] interface {
+	// Finalize is a function that processes finalize requests.
+	// It receives a context, the runtime scheme, and a decoded finalize request,
+	// then returns a finalize response or an error.
+	Finalize(
+		ctx context.Context,
+		scheme *api.Scheme,
+		req *FinalizeRequest[P],
+	) (*FinalizeResponse[P], error)
+}
+
+// FinalizerFunc is a functional implementation of the Finalizer interface.
+type FinalizeFunc[P client.Object] func(
+	ctx context.Context,
+	scheme *api.Scheme,
+	req *FinalizeRequest[P],
+) (*FinalizeResponse[P], error)
+
+// Finalize implements the Finalizer interface.
+func (fn FinalizeFunc[P]) Finalize(ctx context.Context, scheme *api.Scheme, req *FinalizeRequest[P]) (*FinalizeResponse[P], error) {
+	return fn(ctx, scheme, req)
+}

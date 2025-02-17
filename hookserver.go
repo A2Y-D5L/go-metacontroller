@@ -76,7 +76,7 @@ func CompositeController(hooks ...CompositeHook) Option {
 	}
 }
 
-func SyncHook[P client.Object](gvr schema.GroupVersionResource, handler composite.SyncHandler[P]) CompositeHook {
+func SyncHook[P client.Object](gvr schema.GroupVersionResource, syncer composite.Syncer[P]) CompositeHook {
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/sync/" + resource
@@ -84,7 +84,7 @@ func SyncHook[P client.Object](gvr schema.GroupVersionResource, handler composit
 			scheme:  hs.scheme,
 			decoder: hs.codecs.UniversalDecoder(),
 			encoder: hs.codecs.LegacyCodec(gvr.GroupVersion()),
-			handler: handler,
+			handler: syncer,
 			logger:  hs.logger,
 			debug:   hs.debug,
 		})
@@ -92,7 +92,7 @@ func SyncHook[P client.Object](gvr schema.GroupVersionResource, handler composit
 	})
 }
 
-func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, handler composite.SyncHandler[P]) CompositeHook {
+func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, finalizer composite.Finalizer[P]) CompositeHook {
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/finalize/" + resource
@@ -100,21 +100,21 @@ func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, handler comp
 			scheme:  hs.scheme,
 			decoder: hs.codecs.UniversalDecoder(),
 			encoder: hs.codecs.LegacyCodec(gvr.GroupVersion()),
-			handler: handler,
+			handler: finalizer,
 			logger:  hs.logger,
 		})
 		hs.logger.Info("Registered finalize hook at %q for %q", path, gvr.String())
 	})
 }
 
-func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, handler composite.CustomizeHandler[P]) CompositeHook {
+func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, customizer composite.Customizer[P]) CompositeHook {
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/customize/" + resource
 		hs.mux.Handle("POST "+path, &customizeHTTPHandler[P]{
 			scheme:  hs.scheme,
 			decoder: hs.codecs.UniversalDecoder(),
-			handler: handler,
+			handler: customizer,
 			logger:  hs.logger,
 			debug:   hs.debug,
 		})

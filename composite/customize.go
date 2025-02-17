@@ -37,5 +37,24 @@ type CustomizeResponse struct {
 	RelatedResources []ResourceRule `json:"relatedResources"`
 }
 
-// CustomizeHandler is a function type for processing customize hook requests. It receives a context, the runtime scheme, and a decoded customize request, then returns a customize response or an error.
-type CustomizeHandler[P client.Object] func(context.Context, *runtime.Scheme, *CustomizeRequest[P]) (*CustomizeResponse, error)
+// Customizer is an interface for processing customize hook requests.
+type Customizer[P client.Object] interface {
+	// Customize is a function that processes customize requests. It receives a context, the runtime scheme, and a decoded customize request, then returns a customize response or an error.
+	Customize(
+		ctx context.Context,
+		scheme *runtime.Scheme,
+		req *CustomizeRequest[P],
+	) (*CustomizeResponse, error)
+}
+
+// CustomizerFunc is a functional implementation of the Customizer interface.
+type CustomizeFunc[P client.Object] func(
+	ctx context.Context,
+	scheme *runtime.Scheme,
+	req *CustomizeRequest[P],
+) (*CustomizeResponse, error)
+
+// Customize implements the Customizer interface.
+func (fn CustomizeFunc[P]) Customize(ctx context.Context, scheme *runtime.Scheme, req *CustomizeRequest[P]) (*CustomizeResponse, error) {
+	return fn(ctx, scheme, req)
+}
