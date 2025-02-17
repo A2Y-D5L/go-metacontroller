@@ -84,9 +84,8 @@ func SyncHook[P client.Object](gvr schema.GroupVersionResource, syncer composite
 			scheme:  hs.scheme,
 			decoder: hs.codecs.UniversalDecoder(),
 			encoder: hs.codecs.LegacyCodec(gvr.GroupVersion()),
-			handler: syncer,
+			syncer:  syncer,
 			logger:  hs.logger,
-			debug:   hs.debug,
 		})
 		hs.logger.Info("Registered sync hook at %q for %q", path, gvr.String())
 	})
@@ -96,12 +95,11 @@ func FinalizeHook[P client.Object](gvr schema.GroupVersionResource, finalizer co
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/finalize/" + resource
-		hs.mux.Handle("POST "+path, &syncHandler[P]{
-			scheme:  hs.scheme,
-			decoder: hs.codecs.UniversalDecoder(),
-			encoder: hs.codecs.LegacyCodec(gvr.GroupVersion()),
-			handler: finalizer,
-			logger:  hs.logger,
+		hs.mux.Handle("POST "+path, &finalizeHandler[P]{
+			scheme:    hs.scheme,
+			decoder:   hs.codecs.UniversalDecoder(),
+			finalizer: finalizer,
+			logger:    hs.logger,
 		})
 		hs.logger.Info("Registered finalize hook at %q for %q", path, gvr.String())
 	})
@@ -111,12 +109,11 @@ func CustomizeHook[P client.Object](gvr schema.GroupVersionResource, customizer 
 	return CompositeHook(func(hs *HookServer) {
 		resource := fmt.Sprintf("%s/%s", gvr.GroupResource().String(), gvr.Version)
 		path := "/hooks/customize/" + resource
-		hs.mux.Handle("POST "+path, &customizeHTTPHandler[P]{
-			scheme:  hs.scheme,
-			decoder: hs.codecs.UniversalDecoder(),
-			handler: customizer,
-			logger:  hs.logger,
-			debug:   hs.debug,
+		hs.mux.Handle("POST "+path, &customizeHandler[P]{
+			scheme:     hs.scheme,
+			decoder:    hs.codecs.UniversalDecoder(),
+			customizer: customizer,
+			logger:     hs.logger,
 		})
 		hs.logger.Info("Registered customize hook at %q for %q", path, gvr.String())
 	})

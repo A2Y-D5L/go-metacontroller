@@ -18,9 +18,9 @@ type FinalizeRequest[P client.Object] struct {
 }
 
 // FinalizeResponse represents the finalize hook response.
-type FinalizeResponse[TParent client.Object] struct {
+type FinalizeResponse[P client.Object] struct {
 	// Status is the updated composite (parent) resource.
-	Status TParent
+	Status P
 	// Children defines the desired state for child objects.
 	Children map[schema.GroupVersionKind][]client.Object
 	// Finalized indicates whether the parent resource should be marked as finalized.
